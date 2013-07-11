@@ -28,6 +28,7 @@ var rest = require('restler');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
 var URL_DEFAULT = false;
+var TMPFILE_DEFAULT = "tmp.html";
 
 var assertFileExists = function(infile) {
     var instr = infile.toString();
@@ -38,18 +39,27 @@ var assertFileExists = function(infile) {
     return instr;
 };
 
+var buildfn = function(tmpfile) {
+    var response2file = function(result, response) {
+        if (result instanceof Error) {
+            console.error('Error del archivo: ' + util.format(response.message));
+        } else {
+            console.error("Wrote %s", tmpfile);
+            fs.writeFileSync(tmpfile, result);
+            var checkJson = checkHtmlFile(tmpfile, program.checks);
+            var outJson = JSON.stringify(checkJson, null, 4);
+            console.log(outJson);
+        }
+    };
+    return response2file;
+};
+
 var assertURLExists = function(inurl)
 {
     var instr = inurl.toString();
  
-    rest.get(instr).on('complete', function(result) {
-    if (result instanceof Error) {
-       console.log('Error: ' + result.message);
-       process.exit(1);
-    } else {
-      console.log(instr);
-  }
-}); 
+    var response2file = buildfn(TMPFILE_DEFAULT); 
+    rest.get(instr).on('complete', response2file);
 };
 
 var cheerioHtmlFile = function(htmlfile) {
@@ -84,14 +94,15 @@ if(require.main == module) {
         .option('-u, --url <URL>', "URL to check", clone(assertURLExists),URL_DEFAULT)
         .parse(process.argv);
     if (!program.url) {
+      console.log("Encontre un file flag");
       var checkJson = checkHtmlFile(program.file, program.checks);
+      var outJson = JSON.stringify(checkJson, null, 4);
+      console.log(outJson);
     }
      else {
         console.log("Hay un URL");
-//        var checkJson = checkHtmlFile(program.file, program.checks);
     }
-    var outJson = JSON.stringify(checkJson, null, 4);
-    console.log(outJson);
+
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
